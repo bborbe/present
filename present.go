@@ -7,11 +7,10 @@ import (
 	"os"
 	"os/user"
 	"regexp"
-
 	"io"
-
-	"github.com/bborbe/log"
+	"runtime"
 	"github.com/bborbe/stringutil"
+	"github.com/golang/glog"
 )
 
 type entry struct {
@@ -20,22 +19,16 @@ type entry struct {
 	until string
 }
 
-var logger = log.DefaultLogger
-var PARAMETER_LOGLEVEL = "loglevel"
-
 func main() {
-	defer logger.Close()
-	logLevelPtr := flag.String(PARAMETER_LOGLEVEL, log.INFO_STRING, log.FLAG_USAGE)
+	defer glog.Flush()
+	glog.CopyStandardLogTo("info")
 	flag.Parse()
-	logger.SetLevelThreshold(log.LogStringToLevel(*logLevelPtr))
-	logger.Debugf("set log level to %s", *logLevelPtr)
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	writer := os.Stdout
 	err := do(writer)
 	if err != nil {
-		logger.Fatal(err)
-		logger.Close()
-		os.Exit(1)
+		glog.Exit(err)
 	}
 }
 
@@ -44,7 +37,7 @@ func do(writer io.Writer) error {
 	if err != nil {
 		return err
 	}
-	entries, err := read(fmt.Sprintf("%s/Library/Logs/ping.log", u.HomeDir))
+	entries, err := readFromFile(fmt.Sprintf("%s/Library/Logs/ping.log", u.HomeDir))
 	if err != nil {
 		return err
 	}
@@ -54,15 +47,19 @@ func do(writer io.Writer) error {
 	return nil
 }
 
-func read(filename string) ([]*entry, error) {
-	entries := make([]*entry, 0)
+func readFromFile(filename string) ([]*entry, error) {
 	fi, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
+	return read(fi)
+}
+
+func read(rd io.Reader) ([]*entry, error) {
+	entries := make([]*entry, 0)
 	re := regexp.MustCompile("(\\d{4}-\\d{2}-\\d{2})T(\\d{2}:\\d{2}:\\d{2})\\s(.*)")
 	var e *entry
-	reader := bufio.NewReader(fi)
+	reader := bufio.NewReader(rd)
 	for {
 		read, err := reader.ReadString('\n')
 		if err != nil {
@@ -84,5 +81,4 @@ func read(filename string) ([]*entry, error) {
 			}
 		}
 	}
-	return nil, nil
 }
