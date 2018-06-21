@@ -13,6 +13,12 @@ import (
 	"github.com/golang/glog"
 )
 
+var ips = []string{
+	"37.24.17.74",
+	"217.19.181.138",
+	"188.172.114.68",
+}
+
 type entry struct {
 	date  string
 	from  string
@@ -37,7 +43,7 @@ func do(writer io.Writer) error {
 	if err != nil {
 		return err
 	}
-	entries, err := readFromFile(fmt.Sprintf("%s/Library/Logs/ping.log", u.HomeDir))
+	entries, err := readFromFile(fmt.Sprintf("%s/Library/Logs/ip.log", u.HomeDir))
 	if err != nil {
 		return err
 	}
@@ -70,8 +76,8 @@ func read(rd io.Reader) ([]*entry, error) {
 		if len(result) > 0 {
 			date := result[1]
 			time := result[2]
-			place := result[3]
-			if place == "seibert-media" {
+			ip := result[3]
+			if isSeibertMediaIp(ip) {
 				if e == nil || e.date != date {
 					e = &entry{date: date, from: time, until: time}
 					entries = append(entries, e)
@@ -81,4 +87,13 @@ func read(rd io.Reader) ([]*entry, error) {
 			}
 		}
 	}
+}
+
+func isSeibertMediaIp(ip string) bool {
+	for _, i := range ips {
+		if i == ip {
+			return true
+		}
+	}
+	return false
 }
